@@ -22,18 +22,92 @@ repositories {
 }
 
 dependencies {
-    // tag::jetty[]
+    compile "org.springframework.boot:spring-boot-starter-test"
+    compile "org.springframework.boot:spring-boot-starter"
+    compile "org.springframework.boot:spring-boot-starter-actuator"
+    compile "org.springframework.boot:spring-boot-autoconfigure"
+    // compile "org.springframework.boot:spring-boot-starter-data-jpa"
+    compile "org.springframework.boot:spring-boot-starter-security"
+    compile "org.springframework.boot:spring-boot-starter-jetty"
+    compile "org.springframework.boot:spring-boot-actuator"
+    compile "org.springframework.boot:spring-boot"
+    // compile "org.springframework.boot:spring-boot-starter-thymeleaf"
+    compile "org.springframework.boot:spring-boot-loader-tools"
+    // compile "org.springframework.boot:spring-boot-starter-jdbc"
+    compile "org.springframework.boot:spring-boot-starter-logging"
+    // compile "org.springframework.boot:spring-boot-starter-integration"
+    compile "org.springframework.boot:spring-boot-configuration-processor"
+    compile "org.springframework.boot:spring-boot-starter-data-mongodb"
+    // compile "org.springframework.boot:spring-boot-starter-tomcat"
+    compile "org.springframework.boot:spring-boot-starter-aop"
+    compile "org.springframework.boot:spring-boot-starter-amqp"
+    compile "org.springframework.boot:spring-boot-loader"
+    // compile "org.springframework.boot:spring-boot-starter-log4j"
+    compile "org.springframework.boot:spring-boot-dependency-tools"
+    compile "org.springframework.boot:spring-boot-cli"
+    // compile "org.springframework.boot:spring-boot-starter-freemarker"
+    compile "org.springframework.boot:spring-boot-starter-data-rest"
+    compile "org.springframework.boot:spring-boot-dependencies"
+    // compile "org.springframework.boot:spring-boot-starter-mail"
+    // compile "org.springframework.boot:spring-boot-starter-social-linkedin"
+    // compile "org.springframework.boot:spring-boot-starter-mobile"
+    // compile "org.springframework.boot:spring-boot-starter-batch"
+    // compile "org.springframework.boot:spring-boot-starter-websocket"
+    compile "org.springframework.boot:spring-boot-starter-social-twitter"
+    compile "org.springframework.boot:spring-boot-starter-social-facebook"
+    compile "org.springframework.boot:spring-boot-starter-remote-shell"
+    compile "org.springframework.boot:spring-boot-starter-data-solr"
+    compile "org.springframework.boot:spring-boot-starter-hornetq"
+    // compile "org.springframework.boot:spring-boot-starter-data-gemfire"
+    // compile "org.springframework.boot:spring-boot-starter-velocity"
+    compile "org.springframework.boot:spring-boot-starter-groovy-templates"
+    // compile "org.springframework.boot:spring-boot-starter-data-elasticsearch"
+    // compile "org.springframework.boot:spring-boot-starter-redis"
+    // compile "org.springframework.boot:spring-boot-starter-ws"
+    compile "org.springframework.boot:spring-boot-parent"
+    // compile "org.springframework.boot:spring-boot-deployment-test-wildfly"
+    // compile "org.springframework.boot:spring-boot-maven-plugin"
+    compile "org.springframework.boot:spring-boot-versions"
+    // compile "org.springframework.boot:spring-boot-deployment-test-tomee"
+    // compile "org.springframework.boot:spring-boot-security-tests-web-helloworld"
+    compile "org.springframework.boot:spring-boot-starter-mustache"
+    // compile "org.springframework.boot:spring-boot-deployment-tests"
+    // compile "org.springframework.boot:spring-boot-security-tests"
+    // compile "org.springframework.boot:spring-boot-deployment-test-tomcat"
+    compile "org.springframework.boot:spring-boot-full-build"
+    // compile "org.springframework.boot:spring-boot-gradle-tests"
+    // compile "org.springframework.boot:spring-boot-starter-jta-atomikos"
+    // compile "org.springframework.boot:spring-boot-starter-hateoas"
+    compile "org.springframework.boot:spring-boot-starter-log4j2"
+    // compile "org.springframework.boot:spring-boot-starter-jta-bitronix"
+    // compile "org.springframework.boot:spring-boot-starter-undertow"
+    // compile "org.springframework.boot:spring-boot-starters"
+    compile "org.springframework.boot:spring-boot-tools"
+    compile "org.springframework.boot:spring-boot-docs"
+    compile "org.springframework.boot:spring-boot-build"
+    compile "org.springframework.boot:spring-boot-starter-jersey"
+    compile "org.springframework.boot:spring-boot-starter-parent"
+    compile "org.springframework.boot:spring-boot-gradle-plugin"
+    // compile "org.springframework.boot:spring-boot-starter-cloud-connectors"
+
+    compile "org.apache.tika:tika-core:1.7"
+    compile "org.apache.tika:tika-parsers:1.7"
+    compile "org.apache.tika:tika-xmp:1.7"
+    compile "org.apache.tika:tika-java7:1.7"
+    compile "org.apache.tika:tika-serialization:1.7"
+    compile "org.apache.tika:tika-translate:1.7"
+    compile "org.apache.tika:tika:1.7"
+
     compile("org.springframework.boot:spring-boot-starter-web") {
         exclude module: "spring-boot-starter-tomcat"
     }
     compile("org.springframework.boot:spring-boot-starter-jetty")
-    // end::jetty[]
-    // tag::actuator[]
     compile("org.springframework.boot:spring-boot-starter-actuator")
-    // end::actuator[]
     testCompile("junit:junit")
 }
 
 task wrapper(type: Wrapper) {
     gradleVersion = '1.11'
 }
+
+mainClassName = "nutch.NutchStarter"
