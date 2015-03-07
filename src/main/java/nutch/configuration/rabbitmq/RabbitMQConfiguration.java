@@ -1,6 +1,5 @@
 package nutch.configuration.rabbitmq;
 
-import jdk.nashorn.internal.runtime.Logging;
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
@@ -20,7 +19,7 @@ import java.util.logging.Logger;
  */
 @Configuration
 public class RabbitMQConfiguration implements MessageListener {
-    Logger log = Logging.getLogger(this.getClass().getName());
+    Logger log = Logger.getLogger(this.getClass().getName());
 
     String queueName = "url";
     @Autowired
@@ -46,21 +45,24 @@ public class RabbitMQConfiguration implements MessageListener {
 
     @Bean
     SimpleMessageListenerContainer container(ConnectionFactory connectionFactory) {
+
+        log.info("declare");
+
         SimpleMessageListenerContainer container = new SimpleMessageListenerContainer();
         container.setConnectionFactory(connectionFactory);
-        container.setQueueNames(queueName);
+        container.setQueueNames(queue().getName());
         container.setMessageListener(this);
         return container;
     }
 
-    @Override
     public void onMessage(Message message) {
-        log.info("url("+message.getBody()+")");
+        log.info("url("+ new String(message.getBody())+")");
 
     }
 
     @PostConstruct
-    String home() throws Exception {
-        return (String) rabbitTemplate.convertSendAndReceive(exchange().getName(),"http://www.nu.nl");
+    void sendOne() throws Exception {
+        log.info("oef");
+        log.info("send msg:  " + rabbitTemplate.convertSendAndReceive(exchange().getName(),"http://www.nu.nl"));
     }
 }

@@ -46,7 +46,7 @@ dependencies {
     compile "org.springframework.boot:spring-boot-dependency-tools"
     compile "org.springframework.boot:spring-boot-cli"
     // compile "org.springframework.boot:spring-boot-starter-freemarker"
-    compile "org.springframework.boot:spring-boot-starter-data-rest"
+    // compile "org.springframework.boot:spring-boot-starter-data-rest"
     compile "org.springframework.boot:spring-boot-dependencies"
     // compile "org.springframework.boot:spring-boot-starter-mail"
     // compile "org.springframework.boot:spring-boot-starter-social-linkedin"
