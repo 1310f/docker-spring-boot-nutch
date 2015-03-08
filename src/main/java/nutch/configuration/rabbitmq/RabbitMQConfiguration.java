@@ -2,6 +2,8 @@ package nutch.configuration.rabbitmq;
 
 import com.google.gson.Gson;
 import nutch.services.connection.SocksSocketService;
+import nutch.services.rabbitmq.RabbitMQService;
+import nutch.services.rabbitmq.RabbitMQServiceImpl;
 import nutch.services.tika.TikaService;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.http.Header;
@@ -38,6 +40,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.xml.sax.SAXException;
 
 import javax.annotation.PostConstruct;
@@ -121,6 +124,12 @@ public class RabbitMQConfiguration implements MessageListener {
     @Autowired
     Gson gson;
 
+    @Bean
+    RabbitMQService rabbitMQService() {
+        RabbitMQService rabbitMQService = new RabbitMQServiceImpl();
+        return rabbitMQService;
+    }
+
     public void onMessage(Message message) {
         String url = new String(message.getBody());
 
@@ -184,20 +193,16 @@ public class RabbitMQConfiguration implements MessageListener {
     void sendAFew() throws Exception {
 
         String[] urls = {
-             // "http://vj5pbopejlhcbz4n.onion",                            // huge html
+                "http://xcomics5vvoiary2.onion/Alraune1/default/logo.gif",
+                "http://tigas3l7uusztiqu.onion"
 
-
-                "http://tigas3l7uusztiqu.onion",                            // html
         // link: meta({"metadata":{"resourceName":["http://tigas3l7uusztiqu.onion"],"Content-Type":["text/html"]}}), link({"type":"a","uri":"/colophon/#license","title":"","text":"CC Attribution 3.0. See license.","rel":""})
-
-
         // meta({"metadata":{"Dimension HorizontalPixelOffset":["0"],"tiff:ImageLength":["62"],"Compression CompressionTypeName":["lzw"],"resourceName":["http://xcomics5vvoiary2.onion/Alraune1/default/logo.gif"],"GraphicControlExtension":["disposalMethod\u003dnone, userInputFlag\u003dfalse, transparentColorFlag\u003dfalse, delayTime\u003d0, transparentColorIndex\u003d0"],"Compression NumProgressiveScans":["1"],"Chroma ColorSpaceType":["RGB"],"Chroma BlackIsZero":["true"],"Compression Lossless":["true"],"width":["200"],"Dimension ImageOrientation":["Normal"],"ImageDescriptor":["imageLeftPosition\u003d0, imageTopPosition\u003d0, imageWidth\u003d200, imageHeight\u003d62, interlaceFlag\u003dfalse"],"Dimension VerticalPixelOffset":["0"],"tiff:ImageWidth":["200"],"Chroma NumChannels":["3"],"Data SampleFormat":["Index"],"Content-Type":["image/gif"],"height":["62"]}}), defaultHandler({}), parseContext({"context":{}})
 
-                "http://xcomics5vvoiary2.onion/Alraune1/default/logo.gif"   // image
         };
 
         for(String url : urls) {
-            rabbitTemplate.convertAndSend(urlExchange().getName(), "*", url);
+            rabbitMQService().sendUrlToBroker(url);
         }
     }
 }

@@ -1,6 +1,7 @@
 package nutch.services.tika;
 
 import com.google.gson.Gson;
+import nutch.services.rabbitmq.RabbitMQService;
 import org.apache.commons.io.IOUtils;
 import org.apache.tika.Tika;
 import org.apache.tika.detect.Detector;
@@ -14,12 +15,16 @@ import org.apache.tika.parser.image.ImageParser;
 import org.apache.tika.sax.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.net.MalformedURLException;
+import java.net.URL;
 
 /**
  * Created by marcel on 08-03-15.
@@ -59,27 +64,75 @@ public class TikaServiceImpl implements TikaService {
     @Autowired
     BodyContentHandler bodyContentHandler;
 
-
     @Autowired
     Detector detector;
-
 
     @Autowired
     Gson gson;
 
+    @Autowired
+    MongoTemplate mongoTemplate;
 
     public void htmlContentHandler(TikaInputStream tikaInputStream, Metadata metadata) throws TikaException, SAXException, IOException {
         htmlParser.parse(tikaInputStream, teeContentHandler, metaData, parseContext);
         for(Link link : linkHandler.getLinks()) {
-            log.info("link: meta("+gson.toJson(metadata)+"), link("+gson.toJson(link)+")");
+            String path = null;
 
-            String caconicalPath = metadata.get(Metadata.RESOURCE_NAME_KEY) + link.getUri();
+            if(link.getUri().startsWith("http://")) {
+                path = link.getUri();
+            } else if(link.getUri().startsWith("https://")) {
+                path = link.getUri();
+            } else if(link.getUri().startsWith("#")) {
+                // path = link.getUri();
+
+            } else if((!metadata.get(Metadata.RESOURCE_NAME_KEY).contains("#") && !link.getUri().contains("#"))) {
+                if(link.getUri().startsWith("/")) {
+                    String parent = metadata.get(Metadata.RESOURCE_NAME_KEY);
+                    if (parent.endsWith("/") && link.getUri().startsWith("/")) {
+                        path = metadata.get(Metadata.RESOURCE_NAME_KEY).substring(0, metadata.get(Metadata.RESOURCE_NAME_KEY).length() - 1) + link.getUri();
+                    } else {
+                        path = metadata.get(Metadata.RESOURCE_NAME_KEY) + link.getUri();
+                    }
+                }
+            } else {
+                // log.warn("link("+link.getUri()+"), path("+path+"): not supported!");
+            }
+
+            if(path!=null) {
+                try {
+                    URL url = new URL(path);
+                    if (url.getHost().endsWith("onion")) {
+                        log.info("link(" + link.getUri() + ") -> " + url);
+
+                        // TODO:  if !search-engine.find() { in search-engine && queue }
+
+
+                        String text = bodyContentHandler.toString();
+                        String html = toHTMLContentHandler.toString();
+
+                        // mongoTemplate.save(html);
+
+
+
+                        rabbitMQService.sendUrlToBroker(path);
+                    }
+                } catch (MalformedURLException e) {
+                    log.error("Exception: for link(" + link.getUri() + ") ", e);
+                }
+            } else {
+                // log.warn("path null: link("+link.getUri()+"), path("+path+")");
+            }
         }
         // log.info("text:\n" + bodyContentHandler.toString());
         // log.info("html:\n" + toHTMLContentHandler.toString());
 
 
     }
+
+
+
+    @Autowired
+    RabbitMQService rabbitMQService;
 
     @Autowired
     ImageParser imageParser;
