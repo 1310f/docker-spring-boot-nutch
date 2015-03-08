@@ -23,6 +23,7 @@ import org.springframework.boot.cli.compiler.autoconfigure.SpringWebsocketCompil
         FallbackWebSecurityAutoConfiguration.class,
         SecurityAutoConfiguration.class,
         ManagementSecurityAutoConfiguration.class,
+        CrshAutoConfiguration.class
 })
 @EnableRabbit
 public class NutchStarter {

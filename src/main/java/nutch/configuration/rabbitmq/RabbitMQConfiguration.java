@@ -1,14 +1,12 @@
 package nutch.configuration.rabbitmq;
 
-import io.netty.channel.ConnectTimeoutException;
-import org.apache.commons.io.IOUtils;
+import com.google.gson.Gson;
+import nutch.services.connection.SocksSocketService;
+import nutch.services.tika.TikaService;
+import org.apache.commons.lang3.ArrayUtils;
+import org.apache.http.Header;
 import org.apache.http.HttpHost;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpRequest;
 import org.apache.http.client.ClientProtocolException;
-import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
-import org.apache.http.conn.ssl.SSLContexts;
-import org.apache.http.protocol.HttpContext;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.protocol.HttpClientContext;
@@ -17,28 +15,37 @@ import org.apache.http.config.RegistryBuilder;
 import org.apache.http.conn.DnsResolver;
 import org.apache.http.conn.socket.ConnectionSocketFactory;
 import org.apache.http.conn.socket.PlainConnectionSocketFactory;
+import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
+import org.apache.http.conn.ssl.SSLContexts;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
+import org.apache.http.protocol.HttpContext;
 import org.apache.http.util.EntityUtils;
+import org.apache.tika.Tika;
+import org.apache.tika.detect.Detector;
+import org.apache.tika.exception.TikaException;
+import org.apache.tika.io.TikaInputStream;
+import org.apache.tika.metadata.Metadata;
+import org.apache.tika.mime.MediaType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.core.*;
-import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
-import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.xml.sax.SAXException;
 
 import javax.annotation.PostConstruct;
 import javax.net.ssl.SSLContext;
 import java.io.IOException;
-import java.io.InputStream;
+import java.io.Reader;
 import java.net.*;
+import java.util.HashMap;
 
 /**
  * Created by marcel on 06-03-15.
@@ -53,7 +60,9 @@ public class RabbitMQConfiguration implements MessageListener {
 
     }
 
-    String queueName = "url";
+    String htmlQueueName = "text/html";
+    String urlExchangeName = "url";
+
     @Autowired
     AnnotationConfigApplicationContext context;
 
@@ -61,180 +70,134 @@ public class RabbitMQConfiguration implements MessageListener {
     RabbitTemplate rabbitTemplate;
 
     @Bean
-    Queue queue() {
-        return new Queue(queueName, false);
+    Queue htmlQueue() {
+        boolean durable = false;
+        Queue queue = new Queue(htmlQueueName, durable);
+        amqpAdmin.declareQueue(queue);
+        return queue;
     }
 
     @Bean
-    TopicExchange exchange() {
-        return new TopicExchange("url");
+    Exchange urlExchange() {
+        Exchange exchange = new DirectExchange(urlExchangeName);
+        amqpAdmin.declareExchange(exchange);
+        return exchange;
     }
 
+    @Autowired
+    AmqpAdmin amqpAdmin;
+
     @Bean
-    Binding binding(Queue queue, TopicExchange exchange) {
-        return BindingBuilder.bind(queue).to(exchange).with(queueName);
+    Binding binding() {
+        Binding binding = new Binding(
+                htmlQueue().getName(),
+                Binding.DestinationType.QUEUE,
+                urlExchange().getName(),
+                "*",
+                new HashMap<>());
+        amqpAdmin.declareBinding(binding);
+        return binding;
     }
 
     @Bean
     SimpleMessageListenerContainer container(ConnectionFactory connectionFactory) {
         SimpleMessageListenerContainer container = new SimpleMessageListenerContainer();
         container.setConnectionFactory(connectionFactory);
-        container.setQueueNames(queue().getName());
+        container.setQueueNames(htmlQueue().getName());
         container.setMessageListener(this);
         return container;
     }
 
-    static class MyConnectionSocketFactory extends PlainConnectionSocketFactory {
-        @Override
-        public Socket createSocket(final HttpContext context) throws IOException {
-            InetSocketAddress socksaddr = (InetSocketAddress) context.getAttribute("socks.address");
-            Proxy proxy = new Proxy(Proxy.Type.SOCKS, socksaddr);
-            return new Socket(proxy);
-        }
 
-        @Override
-        public Socket connectSocket(int connectTimeout, Socket socket, HttpHost host, InetSocketAddress remoteAddress,
-                                    InetSocketAddress localAddress, org.apache.http.protocol.HttpContext context) throws IOException {
-            InetSocketAddress unresolvedRemote = InetSocketAddress
-                    .createUnresolved(host.getHostName(), remoteAddress.getPort());
-            return super.connectSocket(connectTimeout, socket, host, unresolvedRemote, localAddress, context);
-        }
-    }
+    @Autowired
+    TikaService tikaService;
 
-    static class MySSLConnectionSocketFactory extends SSLConnectionSocketFactory {
+    @Autowired
+    Tika tika;
 
-        public MySSLConnectionSocketFactory(final SSLContext sslContext) {
-            // You may need this verifier if target site's certificate is not secure
-            super(sslContext, ALLOW_ALL_HOSTNAME_VERIFIER);
-        }
+    @Autowired
+    SocksSocketService socksSocketService;
 
-        @Override
-        public Socket createSocket(final HttpContext context) throws IOException {
-            InetSocketAddress socksaddr = (InetSocketAddress) context.getAttribute("socks.address");
-            Proxy proxy = new Proxy(Proxy.Type.SOCKS, socksaddr);
-            return new Socket(proxy);
-        }
-
-        @Override
-        public Socket connectSocket(int connectTimeout, Socket socket, HttpHost host, InetSocketAddress remoteAddress,
-                                    InetSocketAddress localAddress, HttpContext context) throws IOException {
-            // Convert address to unresolved
-            InetSocketAddress unresolvedRemote = InetSocketAddress
-                    .createUnresolved(host.getHostName(), remoteAddress.getPort());
-            return super.connectSocket(connectTimeout, socket, host, unresolvedRemote, localAddress, context);
-        }
-    }
-
-    static class MyConnectionSocketFactory2 implements ConnectionSocketFactory {
-
-
-        @Override
-        public Socket createSocket(org.apache.http.protocol.HttpContext context) throws IOException {
-            InetSocketAddress socksaddr = (InetSocketAddress) context.getAttribute("socks.address");
-            Proxy proxy = new Proxy(Proxy.Type.SOCKS, socksaddr);
-            return new Socket(proxy);        }
-
-        @Override
-        public Socket connectSocket(int connectTimeout, Socket socket, org.apache.http.HttpHost host, InetSocketAddress remoteAddress, InetSocketAddress localAddress, org.apache.http.protocol.HttpContext context) throws IOException {
-            Socket sock;
-
-                if (socket != null) {
-                    sock = socket;
-                } else {
-                    sock = createSocket(context);
-                }
-                if (localAddress != null) {
-                    sock.bind(localAddress);
-                }
-                try {
-                    sock.connect(remoteAddress, connectTimeout);
-                } catch (SocketTimeoutException ex) {
-                    throw new org.apache.http.conn.ConnectTimeoutException(ex, host, remoteAddress.getAddress());
-                }
-                return sock;        }
-    }
-
-    static class FakeDnsResolver implements DnsResolver {
-        @Override
-        public InetAddress[] resolve(String host) throws UnknownHostException {
-            // Return some fake DNS record for every request, we won't be using it
-            return new InetAddress[] { InetAddress.getByAddress(new byte[] { 1, 1, 1, 1 }) };
-        }
-    }
-
-    @Bean
-    MyConnectionSocketFactory myConnectionSocketFactory() {
-        return new MyConnectionSocketFactory();
-    }
-
-    @Bean
-    MySSLConnectionSocketFactory mySSLConnectionSocketFactory() {
-        return new MySSLConnectionSocketFactory(SSLContexts.createSystemDefault());
-    }
-
-    @Bean
-    Registry<ConnectionSocketFactory> registry() {
-        return RegistryBuilder.<ConnectionSocketFactory> create()
-                .register("http", myConnectionSocketFactory())
-                .register("https", mySSLConnectionSocketFactory())
-                .build();
-    }
-
-    @Bean
-    FakeDnsResolver fakeDnsResolver() {
-        return new FakeDnsResolver();
-    }
-
-    @Bean
-    PoolingHttpClientConnectionManager poolingHttpClientConnectionManager() {
-        return new PoolingHttpClientConnectionManager(registry(), new FakeDnsResolver());
-    }
-
-    @Bean
-    CloseableHttpClient closeableHttpClient() throws IOException {
-        return HttpClients.custom().setConnectionManager(poolingHttpClientConnectionManager()).build();
-    }
-
-    @Bean
-    InetSocketAddress inetSocketAddressSocksProxy() {
-        return new InetSocketAddress("docker", 9050);
-    }
-
+    @Autowired
+    Gson gson;
 
     public void onMessage(Message message) {
         String url = new String(message.getBody());
 
+        CloseableHttpResponse closeableHttpResponse = null;
         try {
+            closeableHttpResponse = socksSocketService.connect(url);
 
-            HttpClientContext context = HttpClientContext.create();
-            context.setAttribute("socks.address", inetSocketAddressSocksProxy());
-            HttpGet request = new HttpGet(url);
+            if(closeableHttpResponse.getStatusLine().getStatusCode()==200) {
 
-            // HttpHost target = new HttpHost("vj5pbopejlhcbz4n.onion", 80, "http");
-            // HttpGet request = new HttpGet("/");
+                long length = closeableHttpResponse.getEntity().getContentLength();
+                Header contentType = closeableHttpResponse.getEntity().getContentType();
 
-            CloseableHttpResponse response = closeableHttpClient().execute(request, context);
+                TikaInputStream tikaInputStream = TikaInputStream.get(closeableHttpResponse.getEntity().getContent());
+                Metadata metadata = new Metadata();
+                metadata.add(Metadata.RESOURCE_NAME_KEY, url);
+                metadata.add(Metadata.CONTENT_TYPE, contentType.getValue());
 
-            try {
-                if(response.getStatusLine().getStatusCode()==200) {
-                    byte[] page = IOUtils.toByteArray(response.getEntity().getContent());
-                    log.info("page: " + new String(page));
+                MediaType mediaType = tikaService.detect(tikaInputStream, metadata);
+
+                if( "application".equals(mediaType.getType())) {
+                    if("xhtml+xml".equals(mediaType.getSubtype())) {
+                        tikaService.htmlContentHandler(tikaInputStream, metadata);
+                    } else {
+                        log.warn("this contentType("+mediaType.toString()+") not supported!");
+                    }
+                } else if( "text".equals(mediaType.getType())) {
+                    if("html".equals(mediaType.getSubtype())) {
+                        tikaService.htmlContentHandler(tikaInputStream, metadata);
+                    } else {
+                        log.warn("this contentType("+mediaType.toString()+") not supported!");
+                    }
+                } else if( "image".equals(mediaType.getType())) {
+                    tikaService.imageContentHandler(tikaInputStream,metadata);
                 } else {
-                    log.warn("statuscode("+response.getStatusLine().getStatusCode()+")");
+                    log.warn("this contentType("+mediaType.toString()+") not supported!");
                 }
-                EntityUtils.consume(response.getEntity());
-            } finally {
-                response.close();
+
+            } else {
+                log.warn("statuscode("+closeableHttpResponse.getStatusLine().getStatusCode()+")");
             }
-        } catch (ClientProtocolException e) {
-            e.printStackTrace();
+            EntityUtils.consume(closeableHttpResponse.getEntity());
+
         } catch (IOException e) {
             e.printStackTrace();
+        } catch (SAXException e) {
+            e.printStackTrace();
+        } catch (TikaException e) {
+            e.printStackTrace();
+        } finally {
+            if(closeableHttpResponse != null) {
+                try {
+                    closeableHttpResponse.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
     }
 
     @PostConstruct
-    void sendOne() throws Exception {
-        rabbitTemplate.convertAndSend(exchange().getName(), "http://vj5pbopejlhcbz4n.onion/");
+    void sendAFew() throws Exception {
+
+        String[] urls = {
+             // "http://vj5pbopejlhcbz4n.onion",                            // huge html
+
+
+                "http://tigas3l7uusztiqu.onion",                            // html
+        // link: meta({"metadata":{"resourceName":["http://tigas3l7uusztiqu.onion"],"Content-Type":["text/html"]}}), link({"type":"a","uri":"/colophon/#license","title":"","text":"CC Attribution 3.0. See license.","rel":""})
+
+
+        // meta({"metadata":{"Dimension HorizontalPixelOffset":["0"],"tiff:ImageLength":["62"],"Compression CompressionTypeName":["lzw"],"resourceName":["http://xcomics5vvoiary2.onion/Alraune1/default/logo.gif"],"GraphicControlExtension":["disposalMethod\u003dnone, userInputFlag\u003dfalse, transparentColorFlag\u003dfalse, delayTime\u003d0, transparentColorIndex\u003d0"],"Compression NumProgressiveScans":["1"],"Chroma ColorSpaceType":["RGB"],"Chroma BlackIsZero":["true"],"Compression Lossless":["true"],"width":["200"],"Dimension ImageOrientation":["Normal"],"ImageDescriptor":["imageLeftPosition\u003d0, imageTopPosition\u003d0, imageWidth\u003d200, imageHeight\u003d62, interlaceFlag\u003dfalse"],"Dimension VerticalPixelOffset":["0"],"tiff:ImageWidth":["200"],"Chroma NumChannels":["3"],"Data SampleFormat":["Index"],"Content-Type":["image/gif"],"height":["62"]}}), defaultHandler({}), parseContext({"context":{}})
+
+                "http://xcomics5vvoiary2.onion/Alraune1/default/logo.gif"   // image
+        };
+
+        for(String url : urls) {
+            rabbitTemplate.convertAndSend(urlExchange().getName(), "*", url);
+        }
     }
 }
