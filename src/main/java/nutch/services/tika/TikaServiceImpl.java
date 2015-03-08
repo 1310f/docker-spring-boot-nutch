@@ -1,11 +1,13 @@
 package nutch.services.tika;
 
 import com.google.gson.Gson;
+import nutch.repository.MongoHtmlPageRepository;
 import nutch.services.rabbitmq.RabbitMQService;
 import org.apache.commons.io.IOUtils;
 import org.apache.tika.Tika;
 import org.apache.tika.detect.Detector;
 import org.apache.tika.exception.TikaException;
+import org.apache.tika.io.IOUtils;
 import org.apache.tika.io.TikaInputStream;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.mime.MediaType;
@@ -73,7 +75,12 @@ public class TikaServiceImpl implements TikaService {
     @Autowired
     MongoTemplate mongoTemplate;
 
+    @Autowired
+    MongoHtmlPageRepository mongoHtmlPageRepository;
+
     public void htmlContentHandler(TikaInputStream tikaInputStream, Metadata metadata) throws TikaException, SAXException, IOException {
+        // mongoHtmlPageRepository.findOne(metadata.get(Metadata.RESOURCE_NAME_KEY));
+
         htmlParser.parse(tikaInputStream, teeContentHandler, metaData, parseContext);
         for(Link link : linkHandler.getLinks()) {
             String path = null;
@@ -109,6 +116,8 @@ public class TikaServiceImpl implements TikaService {
 
                         String text = bodyContentHandler.toString();
                         String html = toHTMLContentHandler.toString();
+
+                        mongoHtmlPageRepository.save(html);
 
                         // mongoTemplate.save(html);
 
