@@ -1,4 +1,4 @@
-package nutch.services.rabbitmq;
+package crawler.services.rabbitmq;
 
 import org.springframework.amqp.core.Exchange;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;

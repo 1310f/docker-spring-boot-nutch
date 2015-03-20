@@ -1,4 +1,4 @@
-package nutch.services.connection;
+package crawler.services.connection;
 
 import org.apache.http.client.methods.CloseableHttpResponse;
 

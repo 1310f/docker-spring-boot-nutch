@@ -1,4 +1,4 @@
-package nutch.services.tika;
+package crawler.services.tika;
 
 import org.apache.tika.exception.TikaException;
 import org.apache.tika.io.TikaInputStream;

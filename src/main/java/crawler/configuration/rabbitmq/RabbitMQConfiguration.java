@@ -1,31 +1,14 @@
-package nutch.configuration.rabbitmq;
+package crawler.configuration.rabbitmq;
 
 import com.google.gson.Gson;
-import nutch.services.connection.SocksSocketService;
-import nutch.services.rabbitmq.RabbitMQService;
-import nutch.services.rabbitmq.RabbitMQServiceImpl;
-import nutch.services.tika.TikaService;
-import org.apache.commons.lang3.ArrayUtils;
+import crawler.services.connection.SocksSocketService;
+import crawler.services.rabbitmq.RabbitMQService;
+import crawler.services.rabbitmq.RabbitMQServiceImpl;
+import crawler.services.tika.TikaService;
 import org.apache.http.Header;
-import org.apache.http.HttpHost;
-import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.protocol.HttpClientContext;
-import org.apache.http.config.Registry;
-import org.apache.http.config.RegistryBuilder;
-import org.apache.http.conn.DnsResolver;
-import org.apache.http.conn.socket.ConnectionSocketFactory;
-import org.apache.http.conn.socket.PlainConnectionSocketFactory;
-import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
-import org.apache.http.conn.ssl.SSLContexts;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
-import org.apache.http.protocol.HttpContext;
 import org.apache.http.util.EntityUtils;
 import org.apache.tika.Tika;
-import org.apache.tika.detect.Detector;
 import org.apache.tika.exception.TikaException;
 import org.apache.tika.io.TikaInputStream;
 import org.apache.tika.metadata.Metadata;
@@ -40,14 +23,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.mongodb.core.MongoTemplate;
 import org.xml.sax.SAXException;
 
 import javax.annotation.PostConstruct;
-import javax.net.ssl.SSLContext;
 import java.io.IOException;
-import java.io.Reader;
-import java.net.*;
 import java.util.HashMap;
 
 /**
@@ -168,7 +147,7 @@ public class RabbitMQConfiguration implements MessageListener {
                 }
 
             } else {
-                log.warn("statuscode("+closeableHttpResponse.getStatusLine().getStatusCode()+")");
+                log.warn("url("+url+"): statuscode("+closeableHttpResponse.getStatusLine().getStatusCode()+")");
             }
             EntityUtils.consume(closeableHttpResponse.getEntity());
 

@@ -1,4 +1,4 @@
-package nutch.services.rabbitmq;
+package crawler.services.rabbitmq;
 
 /**
  * Created by marcel on 08-03-15.

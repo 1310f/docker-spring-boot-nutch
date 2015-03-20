@@ -1,9 +1,9 @@
-package nutch.services.tika;
+package crawler.services.tika;
 
 import com.google.gson.Gson;
-import nutch.repository.MongoHtmlPageRepository;
-import nutch.services.rabbitmq.RabbitMQService;
-import org.apache.commons.io.IOUtils;
+import crawler.model.Page;
+import crawler.repository.MongoPageRepository;
+import crawler.services.rabbitmq.RabbitMQService;
 import org.apache.tika.Tika;
 import org.apache.tika.detect.Detector;
 import org.apache.tika.exception.TikaException;
@@ -17,7 +17,6 @@ import org.apache.tika.parser.image.ImageParser;
 import org.apache.tika.sax.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.xml.sax.SAXException;
@@ -27,6 +26,8 @@ import java.io.IOException;
 import java.io.Reader;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Date;
+import java.util.List;
 
 /**
  * Created by marcel on 08-03-15.
@@ -75,13 +76,38 @@ public class TikaServiceImpl implements TikaService {
     @Autowired
     MongoTemplate mongoTemplate;
 
+    // @Autowired
+    // ElasticsearchPageRepository elasticsearchPageRepository;
+
     @Autowired
-    MongoHtmlPageRepository mongoHtmlPageRepository;
+    MongoPageRepository mongoPageRepository;
 
     public void htmlContentHandler(TikaInputStream tikaInputStream, Metadata metadata) throws TikaException, SAXException, IOException {
         // mongoHtmlPageRepository.findOne(metadata.get(Metadata.RESOURCE_NAME_KEY));
+        URL url = new URL(metadata.get(Metadata.RESOURCE_NAME_KEY));
+        List<Page> pages = mongoPageRepository.findByUrl(url);
+        String html = toHTMLContentHandler.toString();
+
+        if(pages.size()==0) {
+            // String text = bodyContentHandler.toString();
+
+            Page page = new Page();
+            page.setUrl(url);
+            page.setHtml(html);
+            page.setInsertDate(new Date());
+            mongoPageRepository.save(page);
+        } else {
+            Page page = pages.get(0);
+            page.setIndexedDate(new Date());
+            page.setUpdateDate(new Date());
+            page.setHtml(html);
+            mongoPageRepository.save(page);
+
+            // log.info("url("+url+") already indexed on " + pages.get(0).getUpdateDate().toString());
+        }
 
         htmlParser.parse(tikaInputStream, teeContentHandler, metaData, parseContext);
+
         for(Link link : linkHandler.getLinks()) {
             String path = null;
 
@@ -93,13 +119,13 @@ public class TikaServiceImpl implements TikaService {
                 // path = link.getUri();
 
             } else if((!metadata.get(Metadata.RESOURCE_NAME_KEY).contains("#") && !link.getUri().contains("#"))) {
-                if(link.getUri().startsWith("/")) {
+                if(!link.getUri().startsWith("/")) {
                     String parent = metadata.get(Metadata.RESOURCE_NAME_KEY);
-                    if (parent.endsWith("/") && link.getUri().startsWith("/")) {
-                        path = metadata.get(Metadata.RESOURCE_NAME_KEY).substring(0, metadata.get(Metadata.RESOURCE_NAME_KEY).length() - 1) + link.getUri();
-                    } else {
-                        path = metadata.get(Metadata.RESOURCE_NAME_KEY) + link.getUri();
-                    }
+                    path = metadata.get(Metadata.RESOURCE_NAME_KEY) + link.getUri();
+                } else {
+                    String parent = metadata.get(Metadata.RESOURCE_NAME_KEY);
+                    URL parentUrl = new URL(parent);
+                    path = "http://"+parentUrl.getHost()+link.getUri();
                 }
             } else {
                 // log.warn("link("+link.getUri()+"), path("+path+"): not supported!");
@@ -107,23 +133,20 @@ public class TikaServiceImpl implements TikaService {
 
             if(path!=null) {
                 try {
-                    URL url = new URL(path);
+                    URL linkUrl = new URL(path);
                     if (url.getHost().endsWith("onion")) {
-                        log.info("link(" + link.getUri() + ") -> " + url);
+                        List<Page> linkPages = mongoPageRepository.findByUrl(linkUrl);
+                        if(linkPages.size()==0) {
+                            if(linkUrl.getHost().endsWith(".onion")) {
+                                log.info("link(" + linkUrl +")");
 
-                        // TODO:  if !search-engine.find() { in search-engine && queue }
-
-
-                        String text = bodyContentHandler.toString();
-                        String html = toHTMLContentHandler.toString();
-
-                        mongoHtmlPageRepository.save(html);
-
-                        // mongoTemplate.save(html);
-
-
-
-                        rabbitMQService.sendUrlToBroker(path);
+                                Page page = new Page();
+                                page.setUrl(linkUrl);
+                                page.setInsertDate(new Date());
+                                mongoPageRepository.save(page);
+                                rabbitMQService.sendUrlToBroker(path);
+                            }
+                        }
                     }
                 } catch (MalformedURLException e) {
                     log.error("Exception: for link(" + link.getUri() + ") ", e);

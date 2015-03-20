@@ -61,7 +61,7 @@ dependencies {
     // compile "org.springframework.boot:spring-boot-starter-data-gemfire"
     // compile "org.springframework.boot:spring-boot-starter-velocity"
     compile "org.springframework.boot:spring-boot-starter-groovy-templates"
-    compile "org.springframework.boot:spring-boot-starter-data-elasticsearch"
+    // compile "org.springframework.boot:spring-boot-starter-data-elasticsearch"
     // compile "org.springframework.boot:spring-boot-starter-redis"
     // compile "org.springframework.boot:spring-boot-starter-ws"
     compile "org.springframework.boot:spring-boot-parent"
@@ -100,6 +100,8 @@ dependencies {
 
     compile "com.google.http-client:google-http-client"
     compile "org.apache.httpcomponents:httpclient:4.3.6"
+
+    compile 'org.apache.commons:commons-lang3:3.3.2'
 
     compile("org.springframework.boot:spring-boot-starter-web") {
         exclude module: "spring-boot-starter-tomcat"

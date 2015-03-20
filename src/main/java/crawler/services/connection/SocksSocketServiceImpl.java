@@ -1,21 +1,13 @@
-package nutch.services.connection;
+package crawler.services.connection;
 
-import nutch.services.tika.TikaService;
-import org.apache.http.Header;
-import org.apache.http.client.ClientProtocolException;
+import crawler.services.tika.TikaService;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.util.EntityUtils;
-import org.apache.tika.exception.TikaException;
-import org.apache.tika.io.TikaInputStream;
-import org.apache.tika.metadata.Metadata;
-import org.apache.tika.mime.MediaType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.xml.sax.SAXException;
 
 import java.io.IOException;
 

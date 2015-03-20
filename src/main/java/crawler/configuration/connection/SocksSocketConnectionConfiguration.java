@@ -1,7 +1,7 @@
-package nutch.configuration.connection;
+package crawler.configuration.connection;
 
-import nutch.services.connection.SocksSocketService;
-import nutch.services.connection.SocksSocketServiceImpl;
+import crawler.services.connection.SocksSocketService;
+import crawler.services.connection.SocksSocketServiceImpl;
 import org.apache.http.HttpHost;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.config.Registry;

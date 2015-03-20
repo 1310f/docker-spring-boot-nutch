@@ -1,8 +1,8 @@
-package nutch.configuration.tika;
+package crawler.configuration.tika;
 
 import com.google.gson.Gson;
-import nutch.services.tika.TikaService;
-import nutch.services.tika.TikaServiceImpl;
+import crawler.services.tika.TikaService;
+import crawler.services.tika.TikaServiceImpl;
 import org.apache.tika.Tika;
 import org.apache.tika.config.TikaConfig;
 import org.apache.tika.detect.Detector;
