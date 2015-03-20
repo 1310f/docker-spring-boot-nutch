@@ -111,6 +111,7 @@ public class RabbitMQConfiguration implements MessageListener {
 
     public void onMessage(Message message) {
         String url = new String(message.getBody());
+        log.info(" .. getting("+url+") ..");
 
         CloseableHttpResponse closeableHttpResponse = null;
         try {
