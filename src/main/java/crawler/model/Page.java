@@ -20,6 +20,12 @@ public class Page implements Serializable {
     ObjectId id;
 
     Date insertDate;
+    Date indexedDate;
+    Date updateDate;
+    @Indexed
+    URL url;
+    URL parentUrl;
+    String html;
 
     public Date getIndexedDate() {
         return indexedDate;
@@ -28,8 +34,6 @@ public class Page implements Serializable {
     public void setIndexedDate(Date indexedDate) {
         this.indexedDate = indexedDate;
     }
-
-    Date indexedDate;
 
     public Date getUpdateDate() {
         return updateDate;
@@ -46,8 +50,6 @@ public class Page implements Serializable {
     public void setInsertDate(Date insertDate) {
         this.insertDate = insertDate;
     }
-
-    Date updateDate;
 
     public ObjectId getId() {
         return id;
@@ -73,10 +75,13 @@ public class Page implements Serializable {
         this.html = html;
     }
 
-    @Indexed
-    URL url;
+    public URL getParentUrl() {
+        return parentUrl;
+    }
 
-    String html;
+    public void setParentUrl(URL parentUrl) {
+        this.parentUrl = parentUrl;
+    }
     // String text;
 
     public String toString() {

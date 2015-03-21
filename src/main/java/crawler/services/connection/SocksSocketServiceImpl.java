@@ -27,12 +27,8 @@ public class SocksSocketServiceImpl implements SocksSocketService {
     HttpClientContext httpClientContext;
 
     public CloseableHttpResponse connect(String url) throws IOException {
-
         HttpGet request = new HttpGet(url);
         CloseableHttpResponse response = closeableHttpClient.execute(request, httpClientContext);
         return response;
-
     }
-
-
 }

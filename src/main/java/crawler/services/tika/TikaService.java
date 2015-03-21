@@ -4,7 +4,10 @@ import org.apache.tika.exception.TikaException;
 import org.apache.tika.io.TikaInputStream;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.mime.MediaType;
+import org.apache.tika.parser.ParseContext;
+import org.apache.tika.parser.image.ImageParser;
 import org.xml.sax.SAXException;
+import org.xml.sax.helpers.DefaultHandler;
 
 import java.io.IOException;
 
@@ -16,7 +19,7 @@ public interface TikaService {
 
     public String htmlToString(TikaInputStream inputStream, Metadata metadata) throws IOException;
 
-    public void htmlContentHandler(TikaInputStream inputStream, Metadata metadata) throws TikaException, SAXException, IOException;
+    public void htmlContentHandler(TikaInputStream tikaInputStream, Metadata metadata, ParseContext parseContext) throws TikaException, SAXException, IOException;
+    public void imageContentHandler(TikaInputStream tikaInputStream, Metadata metadata, ImageParser imageParser, DefaultHandler defaultHandler, ParseContext parseContext) throws IOException, TikaException, SAXException;
 
-    public void imageContentHandler(TikaInputStream tikaInputStream, Metadata metadata) throws IOException, TikaException, SAXException;
 }

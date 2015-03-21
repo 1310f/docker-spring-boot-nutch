@@ -102,6 +102,8 @@ public class SocksSocketConnectionConfiguration {
         @Override
         public InetAddress[] resolve(String host) throws UnknownHostException {
             // Return some fake DNS record for every request, we won't be using it
+            // The Tor 0.2.x series provides a built-in DNS forwarder.
+            // To enable it add the following lines to the Tor configuration file and restart the daemon:
             return new InetAddress[] { InetAddress.getByAddress(new byte[] { 1, 1, 1, 1 }) };
         }
     }

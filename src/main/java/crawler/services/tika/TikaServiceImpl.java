@@ -5,6 +5,7 @@ import crawler.model.Page;
 import crawler.repository.MongoPageRepository;
 import crawler.services.rabbitmq.RabbitMQService;
 import org.apache.tika.Tika;
+import org.apache.tika.config.TikaConfig;
 import org.apache.tika.detect.Detector;
 import org.apache.tika.exception.TikaException;
 import org.apache.tika.io.IOUtils;
@@ -18,6 +19,7 @@ import org.apache.tika.sax.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
@@ -36,10 +38,10 @@ public class TikaServiceImpl implements TikaService {
 
     private static final Logger log = LoggerFactory.getLogger(TikaServiceImpl.class);
 
+    int MAX_BODY_LENGTH = 10*1024*1024;
 
     @Autowired
     Tika tika;
-
 
     public String htmlToString(TikaInputStream inputStream, Metadata metadata) throws IOException {
         Reader reader = tika.parse(inputStream, metadata);
@@ -48,27 +50,6 @@ public class TikaServiceImpl implements TikaService {
         return page;
     }
 
-    @Autowired
-    HtmlParser htmlParser;
-
-    @Autowired
-    TeeContentHandler teeContentHandler;
-
-    @Autowired
-    Metadata metaData;
-
-
-    @Autowired
-    LinkContentHandler linkHandler;
-
-    @Autowired
-    ToHTMLContentHandler toHTMLContentHandler;
-
-    @Autowired
-    BodyContentHandler bodyContentHandler;
-
-    @Autowired
-    Detector detector;
 
     @Autowired
     Gson gson;
@@ -82,33 +63,46 @@ public class TikaServiceImpl implements TikaService {
     @Autowired
     MongoPageRepository mongoPageRepository;
 
-    public void htmlContentHandler(TikaInputStream tikaInputStream, Metadata metadata) throws TikaException, SAXException, IOException {
+    public void htmlContentHandler(TikaInputStream tikaInputStream, Metadata metadata, ParseContext parseContext) throws TikaException, SAXException, IOException {
         // mongoHtmlPageRepository.findOne(metadata.get(Metadata.RESOURCE_NAME_KEY));
         URL url = new URL(metadata.get(Metadata.RESOURCE_NAME_KEY));
-        List<Page> pages = mongoPageRepository.findByUrl(url);
+
+        LinkContentHandler linkContentHandler = new LinkContentHandler();
+        BodyContentHandler bodyContentHandler = new BodyContentHandler(MAX_BODY_LENGTH);
+        ToHTMLContentHandler toHTMLContentHandler = new ToHTMLContentHandler();
+        TeeContentHandler teeContentHandler = new TeeContentHandler(linkContentHandler, bodyContentHandler, toHTMLContentHandler);
+
+        HtmlParser htmlParser = new HtmlParser();
+        htmlParser.parse(tikaInputStream, teeContentHandler, metadata, parseContext);
         String html = toHTMLContentHandler.toString();
 
-        if(pages.size()==0) {
-            // String text = bodyContentHandler.toString();
+        List<Page> pages = mongoPageRepository.findByUrl(url);
+        // String text = bodyContentHandler.toString();
 
+        if(pages.size()==0) {
+            // manually inserted page
             Page page = new Page();
             page.setUrl(url);
             page.setHtml(html);
             page.setInsertDate(new Date());
             mongoPageRepository.save(page);
+            log.info(" .. manual(" + url +"): size("+html.length()+")");
+
+
         } else {
+            if(pages.size()>1) {
+                log.warn("url("+url+") multiple times in db!");
+            }
+            // from html link extractor
             Page page = pages.get(0);
             page.setIndexedDate(new Date());
             page.setUpdateDate(new Date());
             page.setHtml(html);
             mongoPageRepository.save(page);
-
-            // log.info("url("+url+") already indexed on " + pages.get(0).getUpdateDate().toString());
+            log.info(" .. extracted(" + url +"): size("+html.length()+")");
         }
 
-        htmlParser.parse(tikaInputStream, teeContentHandler, metaData, parseContext);
-
-        for(Link link : linkHandler.getLinks()) {
+        for(Link link : linkContentHandler.getLinks()) {
             String path = null;
 
             if(link.getUri().startsWith("http://")) {
@@ -138,10 +132,11 @@ public class TikaServiceImpl implements TikaService {
                         List<Page> linkPages = mongoPageRepository.findByUrl(linkUrl);
                         if(linkPages.size()==0) {
                             if(linkUrl.getHost().endsWith(".onion")) {
-                                log.info("link(" + linkUrl +")");
+                                log.info(" ..link(" + linkUrl +")..");
 
                                 Page page = new Page();
                                 page.setUrl(linkUrl);
+                                page.setParentUrl(url);
                                 page.setInsertDate(new Date());
                                 mongoPageRepository.save(page);
                                 rabbitMQService.sendUrlToBroker(path);
@@ -157,40 +152,26 @@ public class TikaServiceImpl implements TikaService {
         }
         // log.info("text:\n" + bodyContentHandler.toString());
         // log.info("html:\n" + toHTMLContentHandler.toString());
-
-
     }
-
-
 
     @Autowired
     RabbitMQService rabbitMQService;
 
-    @Autowired
-    ImageParser imageParser;
-    @Autowired
-    ParseContext parseContext;
 
     @Autowired
-    DefaultHandler defaultHandler;
-
-
+    TikaConfig tikaConfig;
 
     // meta: X-Parsed-By=org.apache.tika.parser.DefaultParser X-Parsed-By=org.apache.tika.parser.image.ImageParser Dimension HorizontalPixelOffset=0 tiff:ImageLength=62 Compression CompressionTypeName=lzw resourceName=http://xcomics5vvoiary2.onion/Alraune1/default/logo.gif GraphicControlExtension=disposalMethod=none, userInputFlag=false, transparentColorFlag=false, delayTime=0, transparentColorIndex=0 Compression NumProgressiveScans=1 Chroma ColorSpaceType=RGB Chroma BlackIsZero=true Compression Lossless=true width=200 Dimension ImageOrientation=Normal ImageDescriptor=imageLeftPosition=0, imageTopPosition=0, imageWidth=200, imageHeight=62, interlaceFlag=false Dimension VerticalPixelOffset=0 tiff:ImageWidth=200 Chroma NumChannels=3 Data SampleFormat=Index Content-Type=image/gif height=62
 
-    public void imageContentHandler(TikaInputStream tikaInputStream, Metadata metadata) throws IOException, TikaException, SAXException {
-
+    public void imageContentHandler(TikaInputStream tikaInputStream, Metadata metadata, ImageParser imageParser, DefaultHandler defaultHandler, ParseContext parseContext) throws IOException, TikaException, SAXException {
         imageParser.parse(tikaInputStream,defaultHandler,metadata,parseContext);
-
-
         log.info("meta(" + gson.toJson(metadata)+"), defaultHandler("+gson.toJson(defaultHandler)+"), parseContext("+gson.toJson(parseContext)+")");
     }
 
     public MediaType detect(TikaInputStream tikaInputStream, Metadata metadata) throws IOException {
+        Detector detector = tikaConfig.getDetector();
+
         MediaType mediaType = detector.detect(tikaInputStream, metadata);
         return mediaType;
     }
-
-
-
 }

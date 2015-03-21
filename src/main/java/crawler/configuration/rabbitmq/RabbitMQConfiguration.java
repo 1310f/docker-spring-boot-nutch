@@ -13,9 +13,13 @@ import org.apache.tika.exception.TikaException;
 import org.apache.tika.io.TikaInputStream;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.mime.MediaType;
+import org.apache.tika.parser.ParseContext;
+import org.apache.tika.parser.html.HtmlParser;
+import org.apache.tika.parser.image.ImageParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.core.*;
+import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
@@ -24,6 +28,7 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.xml.sax.SAXException;
+import org.xml.sax.helpers.DefaultHandler;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
@@ -44,6 +49,9 @@ public class RabbitMQConfiguration implements MessageListener {
 
     String htmlQueueName = "text/html";
     String urlExchangeName = "url";
+
+    @Autowired
+    SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory;
 
     @Autowired
     AnnotationConfigApplicationContext context;
@@ -87,6 +95,10 @@ public class RabbitMQConfiguration implements MessageListener {
         container.setConnectionFactory(connectionFactory);
         container.setQueueNames(htmlQueue().getName());
         container.setMessageListener(this);
+        container.setConcurrentConsumers(32);
+        container.setMaxConcurrentConsumers(32);
+        container.setPrefetchCount(8);
+        // rabbitListenerContainerFactory.setConcurrentConsumers(16);
         return container;
     }
 
@@ -111,7 +123,7 @@ public class RabbitMQConfiguration implements MessageListener {
 
     public void onMessage(Message message) {
         String url = new String(message.getBody());
-        log.info(" .. getting("+url+") ..");
+        log.info("parse("+url+")..");
 
         CloseableHttpResponse closeableHttpResponse = null;
         try {
@@ -131,18 +143,23 @@ public class RabbitMQConfiguration implements MessageListener {
 
                 if( "application".equals(mediaType.getType())) {
                     if("xhtml+xml".equals(mediaType.getSubtype())) {
-                        tikaService.htmlContentHandler(tikaInputStream, metadata);
+                        ParseContext parseContext = new ParseContext();
+                        tikaService.htmlContentHandler(tikaInputStream, metadata, parseContext);
                     } else {
                         log.warn("this contentType("+mediaType.toString()+") not supported!");
                     }
                 } else if( "text".equals(mediaType.getType())) {
                     if("html".equals(mediaType.getSubtype())) {
-                        tikaService.htmlContentHandler(tikaInputStream, metadata);
+                        ParseContext parseContext = new ParseContext();
+                        tikaService.htmlContentHandler(tikaInputStream, metadata, parseContext);
                     } else {
                         log.warn("this contentType("+mediaType.toString()+") not supported!");
                     }
                 } else if( "image".equals(mediaType.getType())) {
-                    tikaService.imageContentHandler(tikaInputStream,metadata);
+                    ImageParser imageParser = new ImageParser();
+                    DefaultHandler defaultHandler = new DefaultHandler();
+                    ParseContext parseContext = new ParseContext();
+                    tikaService.imageContentHandler(tikaInputStream,metadata,imageParser,defaultHandler,parseContext);
                 } else {
                     log.warn("this contentType("+mediaType.toString()+") not supported!");
                 }
@@ -173,7 +190,7 @@ public class RabbitMQConfiguration implements MessageListener {
     void sendAFew() throws Exception {
 
         String[] urls = {
-                "http://xcomics5vvoiary2.onion/Alraune1/default/logo.gif",
+                //"http://xcomics5vvoiary2.onion/Alraune1/default/logo.gif",
                 "http://tigas3l7uusztiqu.onion"
 
         // link: meta({"metadata":{"resourceName":["http://tigas3l7uusztiqu.onion"],"Content-Type":["text/html"]}}), link({"type":"a","uri":"/colophon/#license","title":"","text":"CC Attribution 3.0. See license.","rel":""})
