@@ -1,6 +1,5 @@
 package crawler.services.connection;
 
-import crawler.services.tika.TikaService;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.protocol.HttpClientContext;
@@ -16,9 +15,6 @@ import java.io.IOException;
  */
 public class SocksSocketServiceImpl implements SocksSocketService {
     private static final Logger log = LoggerFactory.getLogger(SocksSocketServiceImpl.class);
-
-    @Autowired
-    TikaService tikaService;
 
     @Autowired
     CloseableHttpClient closeableHttpClient;

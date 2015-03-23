@@ -1,9 +1,7 @@
 package crawler.repository;
 
 import crawler.model.Page;
-import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.repository.PagingAndSortingRepository;
-import org.springframework.stereotype.Repository;
 
 import java.net.URL;
 import java.util.List;

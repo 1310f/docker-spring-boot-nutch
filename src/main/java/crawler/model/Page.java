@@ -1,6 +1,7 @@
 package crawler.model;
 
 import org.apache.commons.lang3.builder.ReflectionToStringBuilder;
+import org.apache.tika.metadata.Metadata;
 import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
@@ -25,7 +26,26 @@ public class Page implements Serializable {
     @Indexed
     URL url;
     URL parentUrl;
-    String html;
+
+    public byte[] getContent() {
+        return content;
+    }
+
+    public void setContent(byte[] content) {
+        this.content = content;
+    }
+
+    byte[] content;
+
+    public Metadata getMetadata() {
+        return metadata;
+    }
+
+    public void setMetadata(Metadata metadata) {
+        this.metadata = metadata;
+    }
+
+    Metadata metadata;
 
     public Date getIndexedDate() {
         return indexedDate;
@@ -67,13 +87,8 @@ public class Page implements Serializable {
         this.url = url;
     }
 
-    public String getHtml() {
-        return html;
-    }
 
-    public void setHtml(String html) {
-        this.html = html;
-    }
+
 
     public URL getParentUrl() {
         return parentUrl;

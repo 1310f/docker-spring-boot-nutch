@@ -1,8 +1,7 @@
 package crawler.configuration.tika;
 
 import com.google.gson.Gson;
-import crawler.services.tika.TikaService;
-import crawler.services.tika.TikaServiceImpl;
+
 import org.apache.tika.Tika;
 import org.apache.tika.config.TikaConfig;
 import org.apache.tika.detect.Detector;
@@ -73,12 +72,6 @@ public class TikaConfiguration {
     Metadata metadata() {
         Metadata metadata = new Metadata();
         return metadata;
-    }
-
-    @Bean
-    TikaService tikaService() {
-        TikaService tikaService = new TikaServiceImpl();
-        return tikaService;
     }
 
     @Bean
