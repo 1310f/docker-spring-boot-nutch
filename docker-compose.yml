@@ -1,0 +1,19 @@
+elasticsearch:
+ image: elasticsearch
+ ports: 
+  - "9200"
+  - "9300"
+
+rabbitmq:
+ image: rabbitmq:management
+ ports:
+  - "5672"
+  - "15672"
+  - "25672"
+
+tor: 
+ image: marcelmaatkamp/alpine-tor:latest
+ ports:
+   - "9001"
+   - "9050"
+   - "9053"
