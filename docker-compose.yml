@@ -4,12 +4,65 @@ elasticsearch:
   - "9200"
   - "9300"
 
+kibana:
+ image: kibana
+ ports:
+  - "5601"
+ links:
+  - elasticsearch
+
+# ====
+# HDFS
+# ====
+
+# --------
+# namenode
+# --------
+# https://github.com/hauptmedia/docker-hdfs-namenode
+#
+#   8020 fs.defaultFS IPC: ClientProtocol
+#   50070 dfs.namenode.http-address HTTP connector
+#   50470 dfs.namenode.https-address HTTPS connector
+
+hdfsnamenode:
+ image: hauptmedia/hdfs-namenode
+ ports: 
+  - "8020"
+  - "50070"
+  - "50470"
+ volumes:
+  - data/hdfs/namenode/:/var/hdfs/namenode
+
+# --------
+# datanode
+# --------
+# https://github.com/hauptmedia/docker-hdfs-datanode 
+#
+#  TCP 50010 dfs.datanode.address port for data transfer
+#  TCP 50020 dfs.datanode.ipc.address ipc server
+#  TCP 50075 dfs.datanode.http.address http server
+#  TCP 50475 dfs.datanode.https.address https server
+
+hdfsdatanode:
+ image: hauptmedia/hdfs-datanode
+ ports:
+  - "50010"
+  - "50020"
+  - "50075"
+  - "50475"
+ links:
+  - hdfsnamenode:namenode
+ volumes:
+  - data/hdfs/datanode:/tmp/hadoop-root
+
 rabbitmq:
  image: rabbitmq:management
  ports:
   - "5672"
   - "15672"
   - "25672"
+ volumes:
+  - data/rabbitmq:/var/lib/rabbitmq
 
 tor: 
  image: marcelmaatkamp/alpine-tor:latest
