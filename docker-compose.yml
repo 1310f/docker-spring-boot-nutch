@@ -168,14 +168,13 @@ hdfsdatanode:
 
 rabbitmq:
  image: rabbitmq:management
+ hostname: rabbitmq
  ports:
-  - "5672"
-  - "15672"
-  - "25672"
+  - "5672:5672"
+  - "15672:15672"
+  - "25672:25672"
  volumes:
   - data/rabbitmq:/var/lib/rabbitmq
-  environment:
-  - RABBITMQ_MNESIA_DIR=/var/lib/rabbitmq/mnesia/rabbit
 
 tor: 
  image: marcelmaatkamp/alpine-tor:latest
